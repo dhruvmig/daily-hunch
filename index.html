@@ -1,0 +1,496 @@
+<title>Daily Four</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one centered column (max 720px); home is a 2x2 card grid that stacks on phones; each game is a focused single-task screen. */
+:root{
+  --bg:#F4F6F3; --surface:#FFFFFF; --surface2:#EAEFEB; --fg:#15201B; --muted:#5E6B66; --line:#D5DDD8;
+  --accent:#0E7C6B; --accent-fg:#FFFFFF; --accent-soft:#D9EFEA; --gold:#E09A00; --gold-soft:#FBEBC2;
+  --good:#2F8F5B; --good-soft:#D7F0E1; --warn:#C98A08; --warn-soft:#FBEFD0; --bad:#C3413B; --bad-soft:#F7DAD8;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --radius:14px; --shadow:0 1px 2px rgba(21,32,27,.06),0 8px 24px -12px rgba(21,32,27,.18);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0F1513; --surface:#18211D; --surface2:#1F2A25; --fg:#ECF1EE; --muted:#95A39C; --line:#2B3833;
+  --accent:#3FBFA9; --accent-fg:#0B1512; --accent-soft:#163A34; --gold:#F2B52E; --gold-soft:#3C2F10;
+  --good:#4FBF83; --good-soft:#173627; --warn:#E3AA2E; --warn-soft:#3A2E10; --bad:#E0625C; --bad-soft:#3E1C1A;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.6); color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0F1513; --surface:#18211D; --surface2:#1F2A25; --fg:#ECF1EE; --muted:#95A39C; --line:#2B3833;
+  --accent:#3FBFA9; --accent-fg:#0B1512; --accent-soft:#163A34; --gold:#F2B52E; --gold-soft:#3C2F10;
+  --good:#4FBF83; --good-soft:#173627; --warn:#E3AA2E; --warn-soft:#3A2E10; --bad:#E0625C; --bad-soft:#3E1C1A;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.6); color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.5;margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+input{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.1}
+.wrap{max-width:720px;margin:0 auto}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0 14px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;text-decoration:none;color:inherit}
+.brand h1{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.brand .no{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600;background:var(--surface2);color:var(--fg);font-variant-numeric:tabular-nums}
+.pill.gold{background:var(--gold-soft);color:var(--fg)}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--gold)}
+
+/* views */
+.view{display:none}.view.on{display:block}
+.back{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:var(--muted);padding:6px 0;font-weight:600;font-size:14px}
+.back:hover{color:var(--fg)}
+.gamehead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:6px 0 18px;flex-wrap:wrap}
+.gamehead h2{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.gamehead p{margin:4px 0 0;color:var(--muted);font-size:14px;max-width:46ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+
+/* prediction */
+.predict{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.predict .q{font-weight:600}
+.predict .q small{display:block;color:var(--muted);font-weight:400;font-size:13px}
+.choices{display:flex;gap:6px}
+.choice{width:42px;height:42px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);font-family:var(--mono);font-weight:600;font-size:16px}
+.choice:hover{border-color:var(--accent)}
+.choice.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.choice:disabled{cursor:default;opacity:.55}.choice.on:disabled{opacity:1}
+
+/* cards */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:560px){.grid{grid-template-columns:1fr}}
+.card{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column;gap:10px;min-height:160px;box-shadow:var(--shadow);transition:transform .12s ease,border-color .12s ease}
+.card:hover{transform:translateY(-2px);border-color:var(--accent)}
+.card .ic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:20px;background:var(--surface2)}
+.card h3{font-size:20px;font-weight:700}
+.card p{margin:0;color:var(--muted);font-size:14px;flex:1}
+.card .st{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600}
+.card .st .res{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.card.done{border-color:var(--line);background:var(--surface2)}
+.card .st .cta{color:var(--accent)}
+.card .pts{color:var(--muted)}
+
+/* shared controls */
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.ghost{background:none;border-color:transparent;color:var(--muted)}
+.btn:disabled{opacity:.45;cursor:default}
+.note{color:var(--muted);font-size:14px;margin:0}
+.msg{min-height:22px;font-size:14px;font-weight:600;margin:10px 0 0}
+.msg.bad{color:var(--bad)}.msg.good{color:var(--good)}
+.result{margin-top:18px;padding:16px;border-radius:12px;background:var(--surface2);display:flex;flex-direction:column;gap:10px}
+.result .big{font-family:var(--display);font-size:22px;font-weight:800}
+.result .sc{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:14px}
+.kv b{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ladder */
+.ladder{display:flex;flex-direction:column;gap:8px;align-items:center;margin:8px 0 14px}
+.word{display:grid;grid-template-columns:repeat(4,52px);gap:6px}
+.word .l{height:52px;border-radius:9px;display:grid;place-items:center;font-family:var(--mono);font-weight:600;font-size:22px;text-transform:uppercase;background:var(--surface2);border:1.5px solid var(--line)}
+.word.fixed .l{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.word.target .l{background:var(--accent-soft);border-color:var(--accent);color:var(--fg)}
+.word .l.chg{background:var(--gold-soft);border-color:var(--gold)}
+.word .l.hint{background:var(--warn-soft);border-color:var(--warn)}
+.rung{color:var(--muted);font-size:13px;height:12px;line-height:12px}
+.word.input .l{background:var(--surface);border-style:dashed}
+.word.input .l.filled{border-style:solid;border-color:var(--fg)}
+.keys{display:flex;flex-direction:column;gap:6px;align-items:center;margin-top:14px}
+.keys .kr{display:flex;gap:5px}
+.key{min-width:30px;height:44px;padding:0 6px;border-radius:7px;border:0;background:var(--surface2);font-family:var(--mono);font-weight:600;text-transform:uppercase;font-size:14px}
+.key.wide{min-width:52px;font-size:12px}
+.key:active{transform:scale(.96)}
+@media (max-width:400px){.word{grid-template-columns:repeat(4,46px)}.word .l{height:46px;font-size:20px}.key{min-width:27px}}
+
+/* target */
+.tgt{display:flex;align-items:center;justify-content:center;gap:16px;margin:4px 0 16px}
+.tgt .num{font-family:var(--mono);font-size:52px;font-weight:600;letter-spacing:.02em;font-variant-numeric:tabular-nums;line-height:1}
+.tgt .lab{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.tiles{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;min-height:62px}
+.tile{min-width:62px;height:62px;padding:0 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface2);font-family:var(--mono);font-weight:600;font-size:22px;font-variant-numeric:tabular-nums}
+.tile.sel{border-color:var(--accent);background:var(--accent-soft)}
+.tile.new{border-color:var(--gold)}
+.tile.hit{background:var(--good-soft);border-color:var(--good)}
+.ops{display:flex;gap:8px;justify-content:center;margin:12px 0}
+.op{width:52px;height:48px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);font-family:var(--mono);font-size:22px}
+.op.sel{border-color:var(--accent);background:var(--accent-soft)}
+.work{font-family:var(--mono);font-size:14px;color:var(--muted);min-height:22px;text-align:center;margin:0}
+.best{text-align:center;font-size:14px;color:var(--muted);margin:6px 0 0}
+
+/* hi-lo */
+.vs{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch}
+@media (max-width:480px){.vs{grid-template-columns:1fr;gap:8px}.vs .mid{justify-self:center}}
+.cc{border-radius:12px;border:1.5px solid var(--line);background:var(--surface2);padding:18px 14px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;min-height:170px;justify-content:center;transition:border-color .2s}
+.cc .flag{font-size:40px;line-height:1}
+.cc .cn{font-family:var(--display);font-weight:700;font-size:20px}
+.cc .pop{font-family:var(--mono);font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}
+.cc .pop small{font-size:12px;color:var(--muted);font-family:var(--body);font-weight:500;display:block}
+.cc.right .pop{color:var(--muted)}
+.cc.ok{border-color:var(--good);background:var(--good-soft)}
+.cc.no{border-color:var(--bad);background:var(--bad-soft)}
+.vs .mid{align-self:center;font-family:var(--display);font-weight:800;color:var(--muted);font-size:14px;letter-spacing:.1em}
+.hl{display:flex;gap:8px;width:100%;margin-top:6px}
+.hl .btn{flex:1;padding:12px}
+.dots{display:flex;gap:5px;justify-content:center;margin:0 0 14px}
+.dots i{width:14px;height:6px;border-radius:3px;background:var(--line)}
+.dots i.ok{background:var(--good)}.dots i.no{background:var(--bad)}.dots i.cur{background:var(--fg)}
+
+/* capital */
+.country{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;margin:4px 0 18px}
+.country .flag{font-size:72px;line-height:1}
+.country h3{font-size:28px;font-weight:800}
+.country .hint{color:var(--muted);font-size:14px;min-height:22px}
+.capform{display:flex;gap:8px}
+.capform input{flex:1;min-width:0;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);font-size:16px}
+.tries{display:flex;gap:6px;justify-content:center;margin:12px 0 0}
+.tries i{width:12px;height:12px;border-radius:50%;background:var(--line)}
+.tries i.no{background:var(--bad)}.tries i.ok{background:var(--good)}
+.guesses{color:var(--muted);font-size:14px;text-align:center;margin:8px 0 0;min-height:22px}
+
+/* scorecard */
+.scard{border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-top:18px}
+.scard .hd{padding:18px 20px;background:var(--fg);color:var(--bg);display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.scard .hd h2{font-size:22px;font-weight:800}
+.scard .hd .tot{font-family:var(--mono);font-size:34px;font-weight:600;font-variant-numeric:tabular-nums}
+.scard .hd .tot small{font-size:14px;opacity:.7}
+.lines{padding:8px 20px}
+.line{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
+.line:last-child{border-bottom:0}
+.line .em{font-family:var(--mono);font-size:14px;color:var(--muted);letter-spacing:.02em}
+.line .pt{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600;min-width:3ch;text-align:right}
+.line.bonus{background:var(--gold-soft);margin:6px -20px 0;padding:10px 20px;border-radius:0}
+.scard .ft{padding:14px 20px 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+@media (max-width:480px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--surface2);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-family:var(--mono);font-size:20px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;font-size:14px;opacity:0;pointer-events:none;transition:all .25s;z-index:20;max-width:calc(100vw - 32px)}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.foot{margin-top:28px;color:var(--muted);font-size:13px;display:flex;gap:14px;flex-wrap:wrap}
+.foot a{color:inherit}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#" id="brandlink"><h1>Daily Four</h1><span class="no" id="puzno">#1</span></a>
+    <div class="meta">
+      <span class="pill gold" id="streakpill"><span class="dot"></span><span id="streakn">0</span> day streak</span>
+      <span class="pill" title="Time until tomorrow's puzzles">⏱ <span id="countdown">--:--:--</span></span>
+    </div>
+  </header>
+
+  <!-- HOME -->
+  <section class="view on" id="v-home">
+    <div class="panel predict" id="predict">
+      <div class="q">How many of the four will you solve today?<small id="predsmall">Call your shot before you start. Exact guess +100, off by one +50.</small></div>
+      <div class="choices" id="choices"></div>
+    </div>
+    <div class="grid" id="cards"></div>
+    <div id="homecard"></div>
+    <p class="foot"><a href="#rules">How scoring works</a><span>New puzzles at midnight, your local time.</span></p>
+  </section>
+
+  <!-- LADDER -->
+  <section class="view" id="v-ladder">
+    <button class="back" data-go="">← All games</button>
+    <div class="gamehead"><div><h2>Ladder</h2><p>Change one letter at a time. Every rung must be a real word. Fewer steps than par scores higher.</p></div><span class="pill">Par <b id="ladpar" style="font-family:var(--mono)"></b></span></div>
+    <div class="panel">
+      <div class="ladder" id="ladder"></div>
+      <div class="row" style="justify-content:center">
+        <button class="btn" id="ladundo">Undo</button>
+        <button class="btn" id="ladhint">Hint (−20)</button>
+        <button class="btn ghost" id="ladgiveup">Give up</button>
+      </div>
+      <p class="msg" id="ladmsg"></p>
+      <div class="keys" id="ladkeys"></div>
+      <div class="result" id="ladresult" hidden></div>
+    </div>
+  </section>
+
+  <!-- TARGET -->
+  <section class="view" id="v-target">
+    <button class="back" data-go="">← All games</button>
+    <div class="gamehead"><div><h2>Target</h2><p>Reach the target using the six numbers and + − × ÷. Each number can be used once. Exact hits score 100.</p></div></div>
+    <div class="panel">
+      <div class="tgt"><div><div class="lab">Target</div><div class="num" id="tgtnum">000</div></div></div>
+      <div class="tiles" id="tiles"></div>
+      <div class="ops" id="ops">
+        <button class="op" data-op="+">+</button><button class="op" data-op="-">−</button><button class="op" data-op="*">×</button><button class="op" data-op="/">÷</button>
+      </div>
+      <p class="work" id="work"></p>
+      <p class="best" id="tgtbest"></p>
+      <div class="row" style="justify-content:center;margin-top:12px">
+        <button class="btn" id="tgtundo">Undo</button>
+        <button class="btn" id="tgtreset">Reset</button>
+        <button class="btn primary" id="tgtsubmit">Submit best</button>
+        <button class="btn ghost" id="tgtgiveup">Reveal</button>
+      </div>
+      <div class="result" id="tgtresult" hidden></div>
+    </div>
+  </section>
+
+  <!-- HI/LO -->
+  <section class="view" id="v-hilo">
+    <button class="back" data-go="">← All games</button>
+    <div class="gamehead"><div><h2>Higher or Lower</h2><p>Does the country on the right have more people than the one on the left? Ten rounds, 10 points each.</p></div></div>
+    <div class="panel">
+      <div class="dots" id="hldots"></div>
+      <div class="vs" id="vs"></div>
+      <p class="msg" id="hlmsg"></p>
+      <div class="result" id="hlresult" hidden></div>
+    </div>
+  </section>
+
+  <!-- CAPITAL -->
+  <section class="view" id="v-capital">
+    <button class="back" data-go="">← All games</button>
+    <div class="gamehead"><div><h2>Capital</h2><p>Name the capital city. Three tries, with a hint after each miss.</p></div></div>
+    <div class="panel">
+      <div class="country" id="country"></div>
+      <form class="capform" id="capform" autocomplete="off">
+        <input id="capinput" list="caplist" placeholder="Type the capital…" autocapitalize="words" spellcheck="false">
+        <datalist id="caplist"></datalist>
+        <button class="btn primary" type="submit">Guess</button>
+      </form>
+      <div class="tries" id="captries"></div>
+      <p class="guesses" id="capguesses"></p>
+      <div class="result" id="capresult" hidden></div>
+    </div>
+  </section>
+
+  <!-- RULES -->
+  <section class="view" id="v-rules">
+    <button class="back" data-go="">← All games</button>
+    <div class="gamehead"><div><h2>How scoring works</h2><p>Each game is worth up to 100 points. Your prediction can add up to 100 more. Maximum day: 500.</p></div></div>
+    <div class="panel" style="display:flex;flex-direction:column;gap:14px;font-size:15px">
+      <div><b>Ladder</b> · Finish at par 100 · one over 80 · two over 60 · more 40 · each hint −20 · give up 0. Counts as solved if you reach the word.</div>
+      <div><b>Target</b> · Exact 100 · within 5 → 70 · within 10 → 40 · otherwise 10. Counts as solved only when exact.</div>
+      <div><b>Higher or Lower</b> · 10 points per correct round. Counts as solved at 7 or more.</div>
+      <div><b>Capital</b> · First try 100 · second 70 · third 40 · miss 0. Counts as solved on any correct answer.</div>
+      <div><b>Prediction</b> · Before playing, say how many of the four you'll solve. Exact +100, off by one +50. No penalty for being wrong.</div>
+      <div><b>Streak</b> · Complete all four games on consecutive days. Partial days don't count.</div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+// ---------- data ----------
+const VALID = ["that", "with", "this", "have", "from", "your", "they", "will", "just", "like", "what", "when", "more", "were", "time", "been", "some", "also", "them", "than", "good", "only", "into", "know", "make", "over", "then", "back", "want", "well", "said", "most", "much", "very", "even", "here", "need", "work", "year", "made", "take", "many", "life", "down", "last", "best", "such", "love", "home", "long", "look", "same", "used", "both", "come", "part", "find", "help", "high", "does", "game", "give", "next", "each", "must", "show", "feel", "sure", "team", "ever", "keep", "free", "away", "left", "city", "days", "name", "play", "real", "done", "care", "week", "case", "full", "live", "read", "told", "four", "hard", "mean", "once", "tell", "seen", "stop", "call", "head", "took", "came", "side", "went", "less", "line", "open", "area", "face", "five", "kind", "hope", "news", "able", "book", "post", "talk", "fact", "half", "hand", "mind", "body", "food", "true", "lost", "room", "else", "girl", "nice", "yeah", "york", "idea", "past", "move", "wait", "data", "late", "stay", "deal", "soon", "turn", "form", "fire", "easy", "near", "plan", "west", "list", "meet", "type", "baby", "song", "word", "gave", "self", "cost", "main", "road", "town", "fine", "hear", "rest", "term", "wife", "date", "goes", "land", "miss", "shot", "site", "june", "club", "film", "knew", "lead", "dead", "hold", "star", "test", "view", "hour", "wish", "gold", "gone", "king", "bank", "east", "park", "role", "sent", "bill", "cool", "rate", "save", "blue", "fall", "fast", "felt", "size", "step", "page", "upon", "hate", "send", "vote", "lord", "born", "kill", "poor", "code", "door", "hair", "lose", "pick", "race", "seem", "sign", "walk", "loss", "safe", "army", "goal", "huge", "ways", "base", "deep", "mark", "pass", "risk", "ball", "card", "dark", "mine", "note", "wall", "pain", "rock", "cold", "anti", "beat", "text", "join", "kept", "sort", "drop", "fair", "link", "sale", "tour", "sell", "sold", "wide", "fear", "lady", "plus", "unit", "hurt", "rule", "none", "ship", "band", "cash", "lack", "wear", "luck", "rich", "skin", "thus", "fish", "glad", "grow", "trip", "male", "spot", "holy", "lots", "shop", "sick", "cell", "drug", "foot", "hall", "mass", "nine", "heat", "fell", "ride", "slow", "tree", "wind", "cent", "lake", "arms", "fund", "hill", "jack", "pull", "push", "rose", "seat", "draw", "dude", "gain", "ring", "rise", "soul", "mike", "wild", "camp", "cast", "firm", "till", "gift", "mary", "shut", "wood", "copy", "dear", "dogs", "host", "onto", "rare", "boss", "wake", "busy", "farm", "file", "roll", "edge", "evil", "iron", "wine", "core", "port", "flat", "fuel", "kick", "mail", "pair", "zone", "bear", "boat", "duty", "path", "rain", "vice", "warm", "beer", "crew", "moon", "suit", "debt", "grew", "jump", "tech", "user", "flow", "hero", "joke", "loan", "soft", "feed", "pool", "hole", "milk", "pack", "snow", "weak", "cook", "cute", "fake", "task", "fill", "pure", "tony", "bird", "bowl", "meat", "mode", "neck", "zero", "jail", "tiny", "wave", "fail", "seek", "solo", "wing", "bomb", "salt", "bell", "blow", "bond", "mile", "nick", "flag", "kiss", "load", "plot", "rent", "chat", "diet", "item", "lane", "mess", "navy", "tank", "tend", "yard", "golf", "laid", "tool", "mate", "rice", "roof", "calm", "dumb", "hide", "quit", "sing", "bike", "burn", "cake", "loud", "peak", "grab", "pink", "tall", "lock", "nose", "semi", "wise", "aged", "ford", "gang", "lift", "sons", "bush", "coal", "eric", "hunt", "inch", "jury", "tone", "vast", "auto", "earn", "grey", "meal", "rush", "bone", "gate", "harm", "thin", "tied", "drew", "gear", "wash", "acid", "alan", "duke", "fort", "gray", "jeff", "luke", "math", "bath", "mood", "rank", "sand", "tape", "wage", "desk", "rear", "wire", "belt", "jane", "sexy", "soil", "suck", "ugly", "deck", "dust", "rail", "root", "crap", "dean", "hire", "pray", "sake", "ross", "mill", "pace", "pope", "spin", "anna", "hook", "seed", "ward", "coat", "fate", "gene", "jean", "tube", "epic", "exit", "josh", "poll", "sept", "tear", "wolf", "bull", "deny", "ease", "fame", "tail", "twin", "boom", "knee", "teen", "trap", "bang", "cure", "rick", "bite", "chip", "dare", "jazz", "mask", "ruin", "cape", "edit", "seal", "stem", "beef", "clay", "drag", "fool", "loop", "mall", "rely", "sole", "tale", "wore", "bass", "butt", "dual", "gulf", "logo", "odds", "pump", "slip", "corp", "dawn", "tune", "weed", "bold", "clip", "exam", "menu", "nope", "oral", "worn", "khan", "lion", "pipe", "poem", "rude", "vary", "carl", "dirt", "lazy", "shoe", "chef", "emma", "palm", "pole", "shed", "folk", "leaf", "woke", "dish", "duck", "hood", "hung", "lied", "nail", "poet", "sink", "skip", "snap", "swim", "beta", "cave", "dose", "flip", "punk", "wrap", "yoga", "boot", "bulk", "coin", "corn", "raid", "taxi", "bare", "bias", "clue", "cole", "earl", "grid", "soap", "jake", "kent", "lens", "aunt", "flew", "icon", "ours", "tier", "crop", "soup", "beam", "horn", "kyle", "lean", "peer", "pile", "plug", "bend", "cage", "disc", "keen", "mere", "visa", "brad", "deer", "dive", "heal", "pete", "prof", "babe", "drum", "grip", "mild", "noon", "rage", "silk", "urge", "ally", "lung", "pine", "pose", "pour", "sang", "cult", "leak", "mice", "riot", "slot", "coke", "dump", "fold", "myth", "pale", "shaw", "toll", "torn", "hint", "lucy", "nest", "reed", "scan", "span", "tops", "doll", "hull", "rope", "bout", "buzz", "fled", "foul", "hack", "lamp", "oven", "ruth", "slim", "spam", "tent", "tide", "bolt", "bust", "cope", "echo", "hart", "soda", "fork", "junk", "marc", "pill", "pork", "arch", "axis", "goat", "heck", "lamb", "liar", "slam", "tire", "warn", "bail", "buck", "disk", "sail", "void", "whip", "wipe", "chin", "coup", "dash", "jerk", "nude", "barn", "bent", "deaf", "dock", "feat", "neat", "sore", "bean", "bump", "cart", "cord", "dale", "lawn", "oval", "pity", "pond", "prey", "ruby", "wade", "clan", "hers", "slap", "bees", "dame", "eyed", "melt", "oath", "stir", "trek", "amid", "eats", "hike", "lame", "lily", "plea", "sigh", "troy", "wang", "dull", "fare", "idol", "leap", "prep", "scam", "swap", "trio", "acre", "amen", "bore", "chad", "dial", "halt", "monk", "norm", "hail", "joey", "lend", "mint", "nova", "seth", "bake", "fury", "glow", "lone", "papa", "rode", "sack", "sung", "toss", "wool", "yang", "dome", "dope", "gosh", "rack", "tory", "walt", "bury", "fist", "fond", "frog", "heir", "moss", "tomb", "trim", "blah", "haul", "node", "sour", "yale", "beth", "glen", "maya", "saga", "fade", "lime", "maid", "surf", "sync", "bait", "bark", "kirk", "levy", "mock", "para", "spit", "yell", "envy", "heel", "nash", "swan", "bald", "boil", "cone", "isle", "mick", "obey", "ramp", "rand", "reef", "sage", "zoom", "bats", "cube", "guru", "lace", "pier", "quiz", "whoa", "bash", "doom", "flee", "hawk", "memo", "pony", "shah", "sofa", "crow", "font", "glue", "peel", "tick", "vent", "bred", "curb", "dong", "foam", "jade", "stab", "chop", "herb", "herd", "lick", "mold", "polo", "prop", "scar", "vein", "worm", "cane", "crab", "dice", "foil", "gram", "iris", "ping", "turf", "bind", "deed", "gore", "gown", "halo", "lent", "mesh", "rita", "temp", "tray", "cola", "coma", "meta", "rust", "stud", "sunk", "vain", "coil", "flex", "hank", "hose", "lava", "null", "pact", "vest", "vine", "atom", "hulk", "jeep", "knot", "lust", "rang", "rory", "tate", "tile", "verb", "apex", "calf", "cork", "fest", "funk", "lump", "scum", "tore", "vera", "akin", "carr", "gaze", "idle", "limb", "mack", "peek", "quad", "roar", "sank", "yuan", "aide", "bali", "grim", "mart", "shin", "watt", "chic", "pike", "pulp", "reel", "alas", "cite", "dell", "dent", "dove", "gala", "holt", "lure", "mist", "mole", "otto", "rant", "rash", "ripe", "sane", "spun", "toby", "wong", "acne", "bulb", "chew", "dime", "dire", "hare", "jess", "knit", "mute", "pint", "poop", "spur", "tara", "tilt", "veil", "alec", "dang", "duel", "helm", "maze", "sway", "veto", "zinc", "brew", "coca", "cove", "cozy", "neal", "neon", "pest", "poly", "rift", "tuna", "atop", "bing", "ding", "fiat", "gill", "hash", "noel", "puck", "rite", "warp", "womb", "damp", "feud", "fuse", "fuss", "gale", "luna", "vale", "vile", "bale", "chap", "darn", "geek", "homo", "hymn", "noun", "reps", "soak", "sock", "bloc", "flaw", "grad", "hale", "mare", "ness", "poke", "yarn", "brit", "buff", "claw", "grin", "heap", "muse", "spec", "baba", "beau", "clad", "dorm", "drip", "duct", "kung", "sans", "tang", "alma", "colt", "flux", "undo", "wary", "flop", "milo", "ouch", "tame", "taps", "blur", "brow", "indy", "kang", "kite", "lore", "lush", "mash", "plum", "puff", "slid", "tuck", "ware", "cain", "clap", "dunk", "ming", "mona", "nana", "sect", "vase", "hoax", "lite", "mali", "mono", "numb", "pawn", "reap", "tidy", "aura", "comb", "curl", "dart", "fore", "howe", "mast", "rave", "robe", "vita", "weir", "cass", "cuff", "loft", "tyre", "avid", "bong", "hind", "hive", "imam", "mesa", "moth", "wink", "axle", "brag", "coco", "dine", "flap", "glee", "knob", "loaf", "loot", "musk", "odor", "slab", "ammo", "crib", "lama", "noir", "punt", "stew", "thug", "alto", "char", "eddy", "hush", "pear", "slit", "wand", "iced", "peck", "raft", "roam", "swat", "tram", "boon", "brat", "bunk", "gasp", "gong", "heed", "lieu", "loch", "pong", "sham", "bead", "daft", "duly", "dusk", "mule", "seam", "ache", "aqua", "burt", "chow", "dirk", "duet", "elle", "grit", "kemp", "limp", "mead", "pimp", "sire", "trey", "defy", "diva", "flea", "haze", "hemp", "axes", "boob", "coop", "hoop", "malt", "prob", "rink", "amir", "harp", "lori", "posh", "riff", "aria", "edgy", "peep", "soar", "conn", "digs", "fife", "kale", "lash", "rake", "shea", "arid", "demi", "moan", "rein", "soho", "stun", "tack", "tart", "ting", "weep", "burr", "dodd", "duff", "hump", "itch", "afar", "dyer", "mina", "moor", "oily", "slay", "wasp", "bard", "chun", "deem", "fang", "loom", "slew", "swam", "toad", "viva", "wick", "aero", "alba", "anon", "ante", "dole", "kiwi", "limo", "lulu", "mace", "mane", "mend", "mitt", "weld", "berg", "brig", "jock", "meek", "mojo", "napa", "quid", "volt", "barb", "bray", "cosy", "muir", "raja", "slug", "smug", "beak", "boar", "bran", "gall", "lobe", "peat", "spat", "turk", "typo", "writ"];
+const PUZZLE = ["that", "with", "this", "have", "from", "your", "they", "will", "just", "like", "what", "when", "more", "were", "time", "been", "some", "also", "them", "than", "good", "only", "into", "know", "make", "over", "then", "back", "want", "well", "said", "most", "much", "very", "even", "here", "need", "work", "year", "made", "take", "many", "life", "down", "last", "best", "such", "love", "home", "long", "look", "same", "used", "both", "come", "part", "find", "help", "high", "does", "game", "give", "next", "each", "must", "show", "feel", "sure", "team", "ever", "keep", "free", "away", "left", "city", "days", "name", "play", "real", "done", "care", "week", "case", "full", "live", "read", "told", "four", "hard", "mean", "once", "tell", "seen", "stop", "call", "head", "took", "came", "side", "went", "less", "line", "open", "area", "face", "five", "kind", "hope", "news", "able", "book", "post", "talk", "fact", "half", "hand", "mind", "body", "food", "true", "lost", "room", "else", "girl", "nice", "yeah", "york", "idea", "past", "move", "wait", "data", "late", "stay", "deal", "soon", "turn", "form", "fire", "easy", "near", "plan", "west", "list", "meet", "type", "baby", "song", "word", "gave", "self", "cost", "main", "road", "town", "fine", "hear", "rest", "term", "wife", "date", "goes", "land", "miss", "shot", "site", "june", "club", "film", "knew", "lead", "dead", "hold", "star", "test", "view", "hour", "wish", "gold", "gone", "king", "bank", "east", "park", "role", "sent", "bill", "cool", "rate", "save", "blue", "fall", "fast", "felt", "size", "step", "page", "upon", "hate", "send", "vote", "lord", "born", "kill", "poor", "code", "door", "hair", "lose", "pick", "race", "seem", "sign", "walk", "loss", "safe", "army", "goal", "huge", "ways", "base", "deep", "mark", "pass", "risk", "ball", "card", "dark", "mine", "note", "wall", "pain", "rock", "cold", "anti", "beat", "text", "join", "kept", "sort", "drop", "fair", "link", "sale", "tour", "sell", "sold", "wide", "fear", "lady", "plus", "unit", "hurt", "rule", "none", "ship", "band", "cash", "lack", "wear", "luck", "rich", "skin", "thus", "fish", "glad", "grow", "trip", "male", "spot", "holy", "lots", "shop", "sick", "cell", "drug", "foot", "hall", "mass", "nine", "heat", "fell", "ride", "slow", "tree", "wind", "cent", "lake", "arms", "fund", "hill", "jack", "pull", "push", "rose", "seat", "draw", "dude", "gain", "ring", "rise", "soul", "mike", "wild", "camp", "cast", "firm", "till", "gift", "mary", "shut", "wood", "copy", "dear", "dogs", "host", "onto", "rare", "boss", "wake", "busy", "farm", "file", "roll", "edge", "evil", "iron", "wine", "core", "port", "flat", "fuel", "kick", "mail", "pair", "zone", "bear", "boat", "duty", "path", "rain", "vice", "warm", "beer", "crew", "moon", "suit", "debt", "grew", "jump", "tech", "user", "flow", "hero", "joke", "loan", "soft", "feed", "pool", "hole", "milk", "pack", "snow", "weak", "cook", "cute", "fake", "task", "fill", "pure", "tony", "bird", "bowl", "meat", "mode", "neck", "zero", "jail", "tiny", "wave", "fail", "seek", "solo", "wing", "bomb", "salt", "bell", "blow", "bond", "mile", "nick", "flag", "kiss", "load", "plot", "rent", "chat", "diet", "item", "lane", "mess", "navy", "tank", "tend", "yard", "golf", "laid", "tool", "mate", "rice", "roof", "calm", "dumb", "hide", "quit", "sing", "bike", "burn", "cake", "loud", "peak", "grab", "pink", "tall", "lock", "nose", "semi", "wise", "aged", "ford", "gang", "lift", "sons", "bush", "coal", "eric", "hunt", "inch", "jury", "tone", "vast", "auto", "earn", "grey", "meal", "rush", "bone", "gate", "harm", "thin", "tied", "drew", "gear", "wash", "acid", "alan", "duke", "fort", "gray", "jeff", "luke", "math", "bath", "mood", "rank", "sand", "tape", "wage", "desk", "rear", "wire", "belt", "jane", "sexy", "soil", "suck", "ugly", "deck", "dust", "rail", "root", "crap", "dean", "hire", "pray", "sake", "ross", "mill", "pace", "pope", "spin", "anna", "hook", "seed", "ward", "coat", "fate", "gene", "jean", "tube", "epic", "exit", "josh", "poll", "sept", "tear", "wolf", "bull", "deny", "ease", "fame", "tail", "twin", "boom", "knee", "teen", "trap", "bang", "cure", "rick", "bite", "chip", "dare", "jazz", "mask", "ruin", "cape", "edit", "seal", "stem", "beef", "clay", "drag", "fool", "loop", "mall", "rely", "sole", "tale", "wore", "bass", "butt", "dual", "gulf", "logo", "odds", "pump", "slip", "corp", "dawn", "tune", "weed", "bold", "clip", "exam", "menu", "nope", "oral", "worn", "khan", "lion", "pipe", "poem", "rude", "vary", "carl", "dirt", "lazy", "shoe", "chef", "emma", "palm", "pole", "shed", "folk", "leaf", "woke", "dish", "duck", "hood", "hung", "lied", "nail", "poet", "sink", "skip", "snap", "swim", "beta", "cave", "dose", "flip", "punk", "wrap", "yoga", "boot", "bulk", "coin", "corn", "raid", "taxi", "bare", "bias", "clue", "cole", "earl", "grid", "soap", "jake", "kent", "lens", "aunt", "flew", "icon", "ours", "tier", "crop", "soup", "beam", "horn", "kyle", "lean", "peer", "pile", "plug", "bend", "cage", "disc", "keen", "mere", "visa", "brad", "deer", "dive", "heal", "pete", "prof", "babe", "drum", "grip", "mild", "noon", "rage", "silk", "urge", "ally", "lung", "pine", "pose", "pour", "sang", "cult", "leak", "mice", "riot", "slot", "coke", "dump", "fold", "myth", "pale", "shaw", "toll", "torn", "hint", "lucy", "nest", "reed", "scan", "span", "tops", "doll", "hull", "rope", "bout", "buzz", "fled", "foul", "hack", "lamp", "oven", "ruth", "slim", "spam", "tent", "tide", "bolt", "bust", "cope", "echo", "hart", "soda", "fork", "junk", "marc", "pill", "pork", "arch", "axis", "goat", "heck", "lamb", "liar", "slam", "tire", "warn", "bail", "buck", "disk", "sail", "void", "whip", "wipe", "chin", "coup", "dash", "jerk", "nude"];
+const COUNTRIES = [["India", "IN", "New Delhi", 1441, "Asia", ["Delhi"], 1], ["China", "CN", "Beijing", 1409, "Asia", ["Peking"], 1], ["United States", "US", "Washington, D.C.", 341, "North America", ["Washington", "Washington DC"], 1], ["Indonesia", "ID", "Jakarta", 279, "Asia", [], 1], ["Pakistan", "PK", "Islamabad", 245, "Asia", [], 1], ["Nigeria", "NG", "Abuja", 229, "Africa", [], 1], ["Brazil", "BR", "Brasília", 217, "South America", ["Brasilia"], 1], ["Bangladesh", "BD", "Dhaka", 173, "Asia", ["Dacca"], 1], ["Russia", "RU", "Moscow", 144, "Europe", [], 1], ["Mexico", "MX", "Mexico City", 129, "North America", ["Ciudad de Mexico"], 1], ["Ethiopia", "ET", "Addis Ababa", 128, "Africa", [], 1], ["Japan", "JP", "Tokyo", 123, "Asia", [], 1], ["Philippines", "PH", "Manila", 118, "Asia", [], 1], ["Egypt", "EG", "Cairo", 113, "Africa", [], 1], ["DR Congo", "CD", "Kinshasa", 106, "Africa", [], 1], ["Vietnam", "VN", "Hanoi", 100, "Asia", [], 1], ["Iran", "IR", "Tehran", 90, "Asia", [], 1], ["Turkey", "TR", "Ankara", 86, "Asia", [], 1], ["Germany", "DE", "Berlin", 84, "Europe", [], 1], ["Thailand", "TH", "Bangkok", 72, "Asia", [], 1], ["United Kingdom", "GB", "London", 68, "Europe", [], 1], ["Tanzania", "TZ", "Dodoma", 68, "Africa", [], 1], ["France", "FR", "Paris", 66, "Europe", [], 1], ["South Africa", "ZA", "Pretoria", 61, "Africa", ["Cape Town", "Bloemfontein"], 1], ["Italy", "IT", "Rome", 59, "Europe", ["Roma"], 1], ["Kenya", "KE", "Nairobi", 56, "Africa", [], 1], ["Myanmar", "MM", "Naypyidaw", 55, "Asia", ["Nay Pyi Taw"], 1], ["Colombia", "CO", "Bogotá", 52, "South America", ["Bogota"], 1], ["South Korea", "KR", "Seoul", 52, "Asia", [], 1], ["Uganda", "UG", "Kampala", 49, "Africa", [], 1], ["Sudan", "SD", "Khartoum", 49, "Africa", [], 1], ["Spain", "ES", "Madrid", 48, "Europe", [], 1], ["Argentina", "AR", "Buenos Aires", 46, "South America", [], 1], ["Algeria", "DZ", "Algiers", 46, "Africa", [], 1], ["Iraq", "IQ", "Baghdad", 46, "Asia", [], 1], ["Afghanistan", "AF", "Kabul", 42, "Asia", [], 1], ["Canada", "CA", "Ottawa", 40, "North America", [], 1], ["Poland", "PL", "Warsaw", 38, "Europe", [], 1], ["Morocco", "MA", "Rabat", 38, "Africa", [], 1], ["Ukraine", "UA", "Kyiv", 37, "Europe", ["Kiev"], 1], ["Saudi Arabia", "SA", "Riyadh", 37, "Asia", [], 1], ["Angola", "AO", "Luanda", 37, "Africa", [], 1], ["Uzbekistan", "UZ", "Tashkent", 36, "Asia", [], 1], ["Yemen", "YE", "Sanaa", 35, "Asia", ["Sana'a", "Sana"], 1], ["Peru", "PE", "Lima", 34, "South America", [], 1], ["Malaysia", "MY", "Kuala Lumpur", 34, "Asia", [], 1], ["Ghana", "GH", "Accra", 34, "Africa", [], 1], ["Mozambique", "MZ", "Maputo", 34, "Africa", [], 1], ["Nepal", "NP", "Kathmandu", 31, "Asia", [], 1], ["Madagascar", "MG", "Antananarivo", 30, "Africa", [], 1], ["Venezuela", "VE", "Caracas", 29, "South America", [], 1], ["Cameroon", "CM", "Yaoundé", 28, "Africa", ["Yaounde"], 1], ["Australia", "AU", "Canberra", 27, "Oceania", [], 1], ["North Korea", "KP", "Pyongyang", 26, "Asia", [], 1], ["Mali", "ML", "Bamako", 23, "Africa", [], 1], ["Syria", "SY", "Damascus", 23, "Asia", [], 1], ["Sri Lanka", "LK", "Sri Jayawardenepura Kotte", 22, "Asia", ["Colombo", "Kotte"], 1], ["Zambia", "ZM", "Lusaka", 21, "Africa", [], 1], ["Chile", "CL", "Santiago", 20, "South America", [], 1], ["Kazakhstan", "KZ", "Astana", 20, "Asia", ["Nur-Sultan"], 1], ["Romania", "RO", "Bucharest", 19, "Europe", [], 1], ["Netherlands", "NL", "Amsterdam", 18, "Europe", [], 1], ["Ecuador", "EC", "Quito", 18, "South America", [], 1], ["Senegal", "SN", "Dakar", 18, "Africa", [], 1], ["Guatemala", "GT", "Guatemala City", 18, "North America", [], 1], ["Somalia", "SO", "Mogadishu", 18, "Africa", [], 1], ["Cambodia", "KH", "Phnom Penh", 17, "Asia", [], 1], ["Zimbabwe", "ZW", "Harare", 17, "Africa", [], 1], ["Rwanda", "RW", "Kigali", 14, "Africa", [], 1], ["Tunisia", "TN", "Tunis", 12, "Africa", [], 1], ["Belgium", "BE", "Brussels", 12, "Europe", [], 1], ["Cuba", "CU", "Havana", 11, "North America", [], 1], ["Jordan", "JO", "Amman", 11, "Asia", [], 1], ["Sweden", "SE", "Stockholm", 11, "Europe", [], 1], ["Czechia", "CZ", "Prague", 11, "Europe", [], 1], ["Greece", "GR", "Athens", 10, "Europe", [], 1], ["Portugal", "PT", "Lisbon", 10, "Europe", [], 1], ["Hungary", "HU", "Budapest", 10, "Europe", [], 1], ["Azerbaijan", "AZ", "Baku", 10, "Asia", [], 1], ["United Arab Emirates", "AE", "Abu Dhabi", 10, "Asia", [], 1], ["Tajikistan", "TJ", "Dushanbe", 10, "Asia", [], 1], ["Honduras", "HN", "Tegucigalpa", 10.6, "North America", [], 1], ["Papua New Guinea", "PG", "Port Moresby", 10, "Oceania", [], 1], ["Austria", "AT", "Vienna", 9, "Europe", [], 1], ["Switzerland", "CH", "Bern", 9, "Europe", ["Berne"], 1], ["Laos", "LA", "Vientiane", 7.6, "Asia", [], 1], ["Kyrgyzstan", "KG", "Bishkek", 7, "Asia", [], 1], ["Libya", "LY", "Tripoli", 7, "Africa", [], 1], ["Nicaragua", "NI", "Managua", 7, "North America", [], 1], ["Paraguay", "PY", "Asunción", 6.9, "South America", ["Asuncion"], 1], ["Serbia", "RS", "Belgrade", 6.7, "Europe", [], 1], ["Turkmenistan", "TM", "Ashgabat", 6.5, "Asia", [], 1], ["Bulgaria", "BG", "Sofia", 6.5, "Europe", [], 1], ["Denmark", "DK", "Copenhagen", 6, "Europe", [], 1], ["Finland", "FI", "Helsinki", 5.6, "Europe", [], 1], ["Singapore", "SG", "Singapore", 6, "Asia", [], 0], ["Norway", "NO", "Oslo", 5.5, "Europe", [], 1], ["Lebanon", "LB", "Beirut", 5.5, "Asia", [], 1], ["Slovakia", "SK", "Bratislava", 5.4, "Europe", [], 1], ["Costa Rica", "CR", "San José", 5.2, "North America", ["San Jose"], 1], ["Ireland", "IE", "Dublin", 5.3, "Europe", [], 1], ["New Zealand", "NZ", "Wellington", 5.2, "Oceania", [], 1], ["Oman", "OM", "Muscat", 4.6, "Asia", [], 1], ["Panama", "PA", "Panama City", 4.5, "North America", [], 1], ["Kuwait", "KW", "Kuwait City", 4.3, "Asia", [], 0], ["Croatia", "HR", "Zagreb", 3.9, "Europe", [], 1], ["Georgia", "GE", "Tbilisi", 3.7, "Asia", [], 1], ["Mongolia", "MN", "Ulaanbaatar", 3.5, "Asia", ["Ulan Bator"], 1], ["Uruguay", "UY", "Montevideo", 3.4, "South America", [], 1], ["Armenia", "AM", "Yerevan", 3, "Asia", [], 1], ["Qatar", "QA", "Doha", 3, "Asia", [], 1], ["Lithuania", "LT", "Vilnius", 2.9, "Europe", [], 1], ["Jamaica", "JM", "Kingston", 2.8, "North America", [], 1], ["Botswana", "BW", "Gaborone", 2.6, "Africa", [], 1], ["Namibia", "NA", "Windhoek", 2.6, "Africa", [], 1], ["Latvia", "LV", "Riga", 1.9, "Europe", [], 1], ["Estonia", "EE", "Tallinn", 1.4, "Europe", [], 1], ["Fiji", "FJ", "Suva", 0.9, "Oceania", [], 1], ["Bhutan", "BT", "Thimphu", 0.8, "Asia", [], 1], ["Maldives", "MV", "Malé", 0.5, "Asia", ["Male"], 1], ["Iceland", "IS", "Reykjavík", 0.4, "Europe", ["Reykjavik"], 1]]; // [name, iso2, capital, popMillions, continent, altCapitals[], capitalEligible]
+
+// ---------- utils ----------
+const $ = (s)=>document.querySelector(s);
+const EPOCH = new Date(2026,9,31); // local midnight, 31 Oct 2026 = puzzle #1
+function dayIndex(){ const now=new Date(); const t=new Date(now.getFullYear(),now.getMonth(),now.getDate()); return Math.round((t-EPOCH)/86400000); }
+function hash(str){ let h=1779033703^str.length; for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19;} return (h>>>0); }
+function mulberry(seed){ return function(){ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function rngFor(game){ return mulberry(hash('df:'+DAY+':'+game)); }
+function shuffle(arr,rnd){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function store(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+function load(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }
+function flag(iso){ return String.fromCodePoint(...iso.toUpperCase().split('').map(c=>127397+c.charCodeAt(0))); }
+function fmtPop(m){ if(m>=1000) return (m/1000).toFixed(2)+' B'; if(m>=10) return Math.round(m)+' M'; if(m>=1) return m.toFixed(1)+' M'; return Math.round(m*1000)+' K'; }
+function norm(s){ return s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z]/g,''); }
+let toastT; function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),1800); }
+function copyText(text){ const done=()=>toast('Copied. Paste it anywhere.'); if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done).catch(()=>fallback()); } else fallback();
+  function fallback(){ const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); done(); }catch(e){ toast('Select and copy the text manually.'); } document.body.removeChild(ta); } }
+
+// ---------- day state ----------
+const DAY = dayIndex();
+const PUZ = DAY+1;
+const KEY = 'df:day:'+DAY;
+const S = load(KEY, { pred:null, ladder:{steps:[],hints:0,done:false,score:0,solved:false,gaveUp:false}, target:{done:false,score:0,solved:false,best:null,gaveUp:false}, hilo:{round:0,answers:[],done:false,score:0,solved:false}, capital:{guesses:[],done:false,score:0,solved:false} });
+function save(){ store(KEY,S); }
+$('#puzno').textContent='#'+PUZ;
+
+// ---------- streak & stats ----------
+function streak(){ const s=load('df:streak',{count:0,last:null}); if(s.last!==null && s.last<DAY-1) return 0; return s.count; }
+function completeDay(total){ const s=load('df:streak',{count:0,last:null}); if(s.last===DAY) return; s.count = (s.last===DAY-1)? s.count+1 : 1; s.last=DAY; store('df:streak',s); const h=load('df:hist',{}); h[DAY]=total; store('df:hist',h); renderStreak(); }
+function renderStreak(){ $('#streakn').textContent=streak(); }
+renderStreak();
+
+// ---------- countdown ----------
+function tick(){ const n=new Date(); const m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1); let d=Math.max(0,m-n); const h=Math.floor(d/3.6e6); d-=h*3.6e6; const mi=Math.floor(d/6e4); d-=mi*6e4; const s=Math.floor(d/1e3); $('#countdown').textContent=`${h}:${String(mi).padStart(2,'0')}:${String(s).padStart(2,'0')}`; if(dayIndex()!==DAY){ location.reload(); } }
+tick(); setInterval(tick,1000);
+
+// ---------- routing ----------
+const VIEWS=['home','ladder','target','hilo','capital','rules'];
+function go(v){ location.hash = v? '#'+v : ''; if(!v) route(); }
+function route(){ let h=location.hash.replace('#',''); if(!VIEWS.includes(h)) h='home'; VIEWS.forEach(x=>$('#v-'+x).classList.toggle('on',x===h)); if(h==='home') renderHome(); if(h==='capital') setTimeout(()=>{ if(!S.capital.done) $('#capinput').focus(); },50); window.scrollTo(0,0); }
+window.addEventListener('hashchange',route);
+document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+$('#brandlink').addEventListener('click',(e)=>{e.preventDefault();go('');});
+
+// ---------- game registry ----------
+const GAMES=[
+ {id:'ladder', name:'Ladder', ic:'🪜', blurb:'Climb from one word to another, one letter per rung.', share:()=>{const l=S.ladder; return l.solved?`🪜 Ladder ${l.steps.length} steps (par ${LAD.par})${l.hints?` ${'💡'.repeat(l.hints)}`:''}`:`🪜 Ladder ✘ (par ${LAD.par})`;}, res:()=>{const l=S.ladder; return l.solved?`${l.steps.length} steps · par ${LAD.par}`:'Not reached';}},
+ {id:'target', name:'Target', ic:'🎯', blurb:'Six numbers, four operations, one target.', share:()=>{const t=S.target; if(t.gaveUp) return '🎯 Target ✘'; const d=Math.abs(t.best-TGT.target); return d===0?'🎯 Target: exact':`🎯 Target: off by ${d}`;}, res:()=>{const t=S.target; if(t.gaveUp) return 'Revealed'; const d=Math.abs(t.best-TGT.target); return d===0?'Exact hit':`Off by ${d}`;}},
+ {id:'hilo', name:'Higher or Lower', ic:'📊', blurb:'Which country has more people? Ten quick calls.', share:()=>{const h=S.hilo; const c=h.answers.filter(Boolean).length; return `📊 Hi/Lo ${c}/10 ${'█'.repeat(c)}${'░'.repeat(10-c)}`;}, res:()=>`${S.hilo.answers.filter(Boolean).length}/10`},
+ {id:'capital', name:'Capital', ic:'🌍', blurb:'A flag, a country, three tries to name its capital.', share:()=>{const c=S.capital; return `🌍 Capital ${c.guesses.map(g=>g.ok?'✔':'✘').join('')}`;}, res:()=>S.capital.solved?`Try ${S.capital.guesses.length}`:'Missed'},
+];
+
+// ---------- home ----------
+function renderPredict(){
+  const box=$('#choices'); box.innerHTML='';
+  const locked = S.pred!==null || Object.values(S).some(g=>g&&typeof g==='object'&&g.done);
+  for(let i=0;i<=4;i++){ const b=document.createElement('button'); b.className='choice'+(S.pred===i?' on':''); b.textContent=i; b.disabled=locked; b.addEventListener('click',()=>{ S.pred=i; save(); renderPredict(); toast(`Called it: ${i} of 4.`); }); box.appendChild(b); }
+  $('#predsmall').textContent = S.pred===null ? (locked?'Prediction closed once a game is played.':'Call your shot before you start. Exact guess +100, off by one +50.') : `You said ${S.pred}. Exact +100, off by one +50.`;
+}
+function renderHome(){
+  renderPredict();
+  const grid=$('#cards'); grid.innerHTML='';
+  GAMES.forEach(g=>{ const st=S[g.id]; const b=document.createElement('button'); b.className='card'+(st.done?' done':'');
+    b.innerHTML=`<div class="ic">${g.ic}</div><h3>${g.name}</h3><p>${g.blurb}</p><div class="st">${st.done?`<span class="res">${g.res()}</span><span class="pts">${st.score} pts</span>`:`<span class="cta">${started(g.id)?'Continue →':'Play →'}</span><span class="pts">up to 100</span>`}</div>`;
+    b.addEventListener('click',()=>go(g.id)); grid.appendChild(b); });
+  renderScorecard();
+}
+function started(id){ const s=S[id]; return (id==='ladder'&&s.steps.length)||(id==='hilo'&&s.round>0)||(id==='capital'&&s.guesses.length)||false; }
+
+// ---------- scorecard ----------
+function solvedCount(){ return GAMES.filter(g=>S[g.id].solved).length; }
+function bonus(){ if(S.pred===null) return 0; const d=Math.abs(S.pred-solvedCount()); return d===0?100:d===1?50:0; }
+function total(){ return GAMES.reduce((a,g)=>a+S[g.id].score,0)+bonus(); }
+function shareText(){ const d=new Date(); const date=d.toLocaleDateString(undefined,{day:'numeric',month:'short'}); const lines=GAMES.map(g=>g.share()); const pred=S.pred===null?'No prediction':`Predicted ${S.pred} · Solved ${solvedCount()}${bonus()?` +${bonus()}`:''}`; return `Daily Four #${PUZ} · ${date}\n${lines.join('\n')}\n${pred}\nTotal ${total()}/500 · 🔥 ${streak()}\n${location.origin+location.pathname}`; }
+function renderScorecard(){
+  const box=$('#homecard'); const all=GAMES.every(g=>S[g.id].done);
+  if(!all){ const n=GAMES.filter(g=>S[g.id].done).length; box.innerHTML = n? `<p class="note" style="margin-top:14px">${n} of 4 done. Your scorecard appears after the last game.</p>`:''; return; }
+  completeDay(total());
+  const hist=load('df:hist',{}); const vals=Object.values(hist); const avg=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0; const best=vals.length?Math.max(...vals):0;
+  box.innerHTML=`<div class="scard">
+    <div class="hd"><div><h2>Today's scorecard</h2><div style="font-size:13px;opacity:.75">Puzzle #${PUZ} · 🔥 ${streak()}-day streak</div></div><div class="tot">${total()}<small>/500</small></div></div>
+    <div class="lines">${GAMES.map(g=>`<div class="line"><span>${g.name}</span><span class="em">${g.share().replace(/^\S+\s/,'')}</span><span class="pt">${S[g.id].score}</span></div>`).join('')}
+      <div class="line bonus"><span>Prediction</span><span class="em">${S.pred===null?'none':`said ${S.pred}, solved ${solvedCount()}`}</span><span class="pt">+${bonus()}</span></div></div>
+    <div class="ft"><button class="btn primary" id="sharebtn">Share result</button><span class="note">Spoiler-free. Paste it in any chat.</span></div></div>
+    <div class="stats"><div class="stat"><b>${vals.length}</b><span>days played</span></div><div class="stat"><b>${avg}</b><span>average</span></div><div class="stat"><b>${best}</b><span>best day</span></div><div class="stat"><b>${streak()}</b><span>streak</span></div></div>`;
+  $('#sharebtn').addEventListener('click',()=>copyText(shareText()));
+}
+function finish(id,{score,solved,extra}){ const s=S[id]; s.done=true; s.score=score; s.solved=solved; Object.assign(s,extra||{}); save(); }
+
+// ========== LADDER ==========
+const VSET=new Set(VALID); const BUCKETS={};
+VALID.forEach(w=>{ for(let i=0;i<4;i++){ const p=w.slice(0,i)+'_'+w.slice(i+1); (BUCKETS[p]=BUCKETS[p]||[]).push(w);} });
+function neighbors(w){ const out=new Set(); for(let i=0;i<4;i++){ const p=w.slice(0,i)+'_'+w.slice(i+1); (BUCKETS[p]||[]).forEach(x=>{ if(x!==w) out.add(x); }); } return [...out]; }
+function bfs(start){ const dist={[start]:0}; const prev={}; const q=[start]; for(let i=0;i<q.length;i++){ const w=q[i]; for(const n of neighbors(w)){ if(dist[n]===undefined){ dist[n]=dist[w]+1; prev[n]=w; q.push(n);} } } return {dist,prev}; }
+function pathTo(prev,start,end){ const p=[end]; while(p[0]!==start){ p.unshift(prev[p[0]]); } return p; }
+const LAD=(function(){ const rnd=rngFor('ladder'); const names=new Set(['ruth','marc','hart','mike','jean','duke','jack','john','paul','mark','bill','dave','josh','matt','luke','adam','eric','ryan','ross','greg','tony','kate','anna','emma','lisa','mary','sara','amy','jane','jeff','sean','noah','ivan','carl','alan','neil','omar','kurt','otto','hugo','lily','rose','jill','jose']); const pool=PUZZLE.filter(w=>!names.has(w));
+  for(let tries=0;tries<40;tries++){ const start=pool[Math.floor(rnd()*pool.length)]; const {dist,prev}=bfs(start); const want=4+Math.floor(rnd()*2); const cands=pool.filter(w=>dist[w]===want); if(cands.length){ const end=cands[Math.floor(rnd()*cands.length)]; return {start,end,par:want,solution:pathTo(prev,start,end)}; } }
+  const start='cold',end='warm'; const {dist,prev}=bfs(start); return {start,end,par:dist[end],solution:pathTo(prev,start,end)}; })();
+$('#ladpar').textContent=LAD.par;
+let ladInput='';
+function ladCur(){ const s=S.ladder.steps; return s.length?s[s.length-1].w:LAD.start; }
+function renderLadder(){
+  const box=$('#ladder'); box.innerHTML='';
+  const row=(w,cls,prevW,hint)=>{ const d=document.createElement('div'); d.className='word '+cls; d.innerHTML=w.split('').map((c,i)=>`<span class="l ${prevW&&prevW[i]!==c?(hint?'hint':'chg'):''}">${c}</span>`).join(''); return d; };
+  box.appendChild(row(LAD.start,'fixed'));
+  let prev=LAD.start; S.ladder.steps.forEach(st=>{ box.appendChild(row(st.w, st.w===LAD.end?'target':'', prev, st.hint)); prev=st.w; });
+  if(!S.ladder.done){ const d=document.createElement('div'); d.className='word input'; d.innerHTML=[0,1,2,3].map(i=>`<span class="l ${ladInput[i]?'filled':''}">${ladInput[i]||''}</span>`).join(''); box.appendChild(d); }
+  if(ladCur()!==LAD.end){ const r=document.createElement('div'); r.className='rung'; r.textContent='⋮'; box.appendChild(r); box.appendChild(row(LAD.end,'target')); }
+  $('#ladundo').disabled = S.ladder.done || !S.ladder.steps.length;
+  $('#ladhint').disabled = S.ladder.done || S.ladder.hints>=2;
+  $('#ladgiveup').disabled = S.ladder.done;
+  $('#ladkeys').hidden = S.ladder.done;
+  if(S.ladder.done) showLadResult();
+}
+function ladSubmit(){
+  const w=ladInput.toLowerCase(); const cur=ladCur(); const msg=$('#ladmsg'); msg.className='msg bad';
+  if(w.length<4){ msg.textContent='Four letters.'; return; }
+  let diff=0; for(let i=0;i<4;i++) if(w[i]!==cur[i]) diff++;
+  if(diff!==1){ msg.textContent= diff===0?'That\'s the same word.':'Change exactly one letter.'; return; }
+  if(!VSET.has(w)){ msg.textContent=`"${w.toUpperCase()}" isn't in the word list.`; return; }
+  if(S.ladder.steps.some(s=>s.w===w)||w===LAD.start){ msg.textContent='Already on the ladder.'; return; }
+  S.ladder.steps.push({w}); ladInput=''; msg.textContent=''; save();
+  if(w===LAD.end){ const n=S.ladder.steps.length; const over=n-LAD.par; let sc= over<=0?100:over===1?80:over===2?60:40; sc=Math.max(0,sc-20*S.ladder.hints); finish('ladder',{score:sc,solved:true}); }
+  renderLadder();
+}
+function showLadResult(){ const r=$('#ladresult'); r.hidden=false; const l=S.ladder; r.innerHTML= l.solved? `<div class="big">Reached ${LAD.end.toUpperCase()} in ${l.steps.length} steps</div><div class="kv"><span>Par ${LAD.par}${l.hints?` · ${l.hints} hint${l.hints>1?'s':''}`:''}</span><b>${l.score} pts</b></div><div class="row"><button class="btn primary" id="ladshare">Copy result</button><button class="btn" data-go="">Back to games</button></div>` : `<div class="big">Shortest path</div><div class="sc">${LAD.solution.map(w=>w.toUpperCase()).join(' → ')}</div><div class="kv"><span>Given up</span><b>0 pts</b></div><div class="row"><button class="btn" data-go="">Back to games</button></div>`;
+  r.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>go(''))); const sb=$('#ladshare'); if(sb) sb.addEventListener('click',()=>copyText(GAMES[0].share())); }
+$('#ladundo').addEventListener('click',()=>{ if(S.ladder.done) return; S.ladder.steps.pop(); ladInput=''; save(); renderLadder(); });
+$('#ladhint').addEventListener('click',()=>{ if(S.ladder.done||S.ladder.hints>=2) return; const cur=ladCur(); const {prev,dist}=bfs(cur); if(dist[LAD.end]===undefined) return; const p=pathTo(prev,cur,LAD.end); const next=p[1]; S.ladder.hints++; S.ladder.steps.push({w:next,hint:true}); ladInput=''; save(); if(next===LAD.end){ const n=S.ladder.steps.length; const over=n-LAD.par; let sc= over<=0?100:over===1?80:over===2?60:40; sc=Math.max(0,sc-20*S.ladder.hints); finish('ladder',{score:sc,solved:true}); } renderLadder(); });
+$('#ladgiveup').addEventListener('click',()=>{ if(S.ladder.done) return; finish('ladder',{score:0,solved:false,extra:{gaveUp:true}}); renderLadder(); });
+(function keys(){ const rows=['qwertyuiop','asdfghjkl','zxcvbnm']; const box=$('#ladkeys'); rows.forEach((r,ri)=>{ const d=document.createElement('div'); d.className='kr'; if(ri===2){ const e=document.createElement('button'); e.className='key wide'; e.textContent='enter'; e.dataset.k='enter'; d.appendChild(e);} r.split('').forEach(c=>{ const b=document.createElement('button'); b.className='key'; b.textContent=c; b.dataset.k=c; d.appendChild(b); }); if(ri===2){ const e=document.createElement('button'); e.className='key wide'; e.textContent='⌫'; e.dataset.k='back'; d.appendChild(e);} box.appendChild(d); });
+  box.addEventListener('click',e=>{ const k=e.target.dataset&&e.target.dataset.k; if(k) ladKey(k); }); })();
+function ladKey(k){ if(S.ladder.done||!$('#v-ladder').classList.contains('on')) return; if(k==='enter') return ladSubmit(); if(k==='back'){ ladInput=ladInput.slice(0,-1); } else if(/^[a-z]$/.test(k)&&ladInput.length<4){ ladInput+=k; } $('#ladmsg').textContent=''; renderLadder(); }
+document.addEventListener('keydown',e=>{ if(!$('#v-ladder').classList.contains('on')||e.metaKey||e.ctrlKey) return; const k=e.key.toLowerCase(); if(k==='enter') ladKey('enter'); else if(k==='backspace') ladKey('back'); else if(/^[a-z]$/.test(k)) ladKey(k); });
+
+// ========== TARGET ==========
+function solveNumbers(nums,target){ let best={diff:Infinity,expr:''}; const items=nums.map(n=>({v:n,e:String(n)}));
+  function rec(list){ for(const it of list){ const d=Math.abs(it.v-target); if(d<best.diff){ best={diff:d,expr:it.e}; if(d===0) return true; } }
+    if(list.length<2) return false;
+    for(let i=0;i<list.length;i++) for(let j=0;j<list.length;j++){ if(i===j) continue; const a=list[i],b=list[j]; if(i>j && true){ /* allow both orders for - and / only */ }
+      const rest=list.filter((_,k)=>k!==i&&k!==j); const cands=[];
+      if(i<j){ cands.push({v:a.v+b.v,e:`(${a.e}+${b.e})`}); if(a.v!==1&&b.v!==1) cands.push({v:a.v*b.v,e:`(${a.e}×${b.e})`}); }
+      if(a.v>b.v) cands.push({v:a.v-b.v,e:`(${a.e}−${b.e})`});
+      if(b.v>1&&a.v%b.v===0) cands.push({v:a.v/b.v,e:`(${a.e}÷${b.e})`});
+      for(const c of cands){ if(rec(rest.concat([c]))) return true; } }
+    return false; }
+  rec(items); return best; }
+const TGT=(function(){ const rnd=rngFor('target'); for(let t=0;t<30;t++){ const nl=[1,1,2,2,2,3][Math.floor(rnd()*6)]; const larges=shuffle([25,50,75,100],rnd).slice(0,nl); const smalls=shuffle([1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10],rnd).slice(0,6-nl); const nums=larges.concat(smalls); const target=101+Math.floor(rnd()*899); const sol=solveNumbers(nums,target); if(sol.diff===0) return {nums,target,solution:sol.expr.replace(/^\((.*)\)$/,'$1')}; } const nums=[25,50,3,6,7,8], target=253; return {nums,target,solution:solveNumbers(nums,target).expr.replace(/^\((.*)\)$/,'$1')}; })();
+$('#tgtnum').textContent=TGT.target;
+let tgtTiles=TGT.nums.map((v,i)=>({v,id:i,e:String(v)})), tgtHist=[], selA=null, selOp=null, tgtBest=null;
+function renderTarget(){
+  const box=$('#tiles'); box.innerHTML=''; tgtTiles.forEach(t=>{ const b=document.createElement('button'); b.className='tile'+(selA===t.id?' sel':'')+(t.isNew?' new':'')+(t.v===TGT.target?' hit':''); b.textContent=t.v; b.addEventListener('click',()=>tileClick(t.id)); box.appendChild(b); });
+  document.querySelectorAll('.op').forEach(o=>o.classList.toggle('sel',selOp===o.dataset.op));
+  const closest=tgtTiles.reduce((a,t)=>Math.abs(t.v-TGT.target)<Math.abs(a-TGT.target)?t.v:a, tgtTiles[0].v);
+  if(tgtBest===null||Math.abs(closest-TGT.target)<Math.abs(tgtBest-TGT.target)) tgtBest=closest;
+  const d=Math.abs(tgtBest-TGT.target); $('#tgtbest').textContent = S.target.done?'' : d===0?'You hit it. Submit to lock it in.':`Closest so far: ${tgtBest} (off by ${d})`;
+  $('#work').textContent = selA!==null ? `${tgtTiles.find(t=>t.id===selA).v} ${selOp?({'+':'+','-':'−','*':'×','/':'÷'})[selOp]:''} …` : (tgtHist.length? (tgtTiles.filter(t=>t.isNew).map(t=>t.e.replace(/^\((.*)\)$/,'$1')+' = '+t.v).slice(-1)[0]||'') : '');
+  $('#tgtundo').disabled=S.target.done||!tgtHist.length; $('#tgtreset').disabled=S.target.done; $('#tgtsubmit').disabled=S.target.done; $('#tgtgiveup').disabled=S.target.done;
+  $('#ops').style.visibility=S.target.done?'hidden':'visible';
+  if(S.target.done) showTgtResult(); }
+function tileClick(id){ if(S.target.done) return; if(selA===null){ selA=id; } else if(selA===id){ selA=null; selOp=null; } else if(selOp){ const a=tgtTiles.find(t=>t.id===selA), b=tgtTiles.find(t=>t.id===id); let v=null; if(selOp==='+') v=a.v+b.v; if(selOp==='*') v=a.v*b.v; if(selOp==='-'){ v=a.v-b.v; if(v<=0){ toast('Result must stay positive.'); selA=null; selOp=null; return renderTarget(); } } if(selOp==='/'){ if(b.v===0||a.v%b.v!==0){ toast('Only whole-number division.'); selA=null; selOp=null; return renderTarget(); } v=a.v/b.v; }
+    tgtHist.push(tgtTiles.map(t=>({...t}))); const sym={'+':'+','-':'−','*':'×','/':'÷'}[selOp]; tgtTiles=tgtTiles.filter(t=>t.id!==selA&&t.id!==id).map(t=>({...t,isNew:false})); tgtTiles.push({v,id:Date.now()+Math.random(),e:`(${a.e}${sym}${b.e})`,isNew:true}); selA=null; selOp=null;
+    if(v===TGT.target){ renderTarget(); return; } } else { selA=id; } renderTarget(); }
+document.querySelectorAll('.op').forEach(o=>o.addEventListener('click',()=>{ if(S.target.done||selA===null) return; selOp = selOp===o.dataset.op?null:o.dataset.op; renderTarget(); }));
+$('#tgtundo').addEventListener('click',()=>{ if(!tgtHist.length) return; tgtTiles=tgtHist.pop(); selA=null; selOp=null; renderTarget(); });
+$('#tgtreset').addEventListener('click',()=>{ tgtTiles=TGT.nums.map((v,i)=>({v,id:i,e:String(v)})); tgtHist=[]; selA=null; selOp=null; renderTarget(); });
+$('#tgtsubmit').addEventListener('click',()=>{ const d=Math.abs(tgtBest-TGT.target); const sc=d===0?100:d<=5?70:d<=10?40:10; finish('target',{score:sc,solved:d===0,extra:{best:tgtBest}}); renderTarget(); });
+$('#tgtgiveup').addEventListener('click',()=>{ finish('target',{score:0,solved:false,extra:{best:tgtBest,gaveUp:true}}); renderTarget(); });
+function showTgtResult(){ const r=$('#tgtresult'); r.hidden=false; const t=S.target; const d=Math.abs(t.best-TGT.target); r.innerHTML = t.gaveUp? `<div class="big">One way to get ${TGT.target}</div><div class="sc">${TGT.solution}</div><div class="kv"><span>Revealed</span><b>0 pts</b></div><div class="row"><button class="btn" data-go="">Back to games</button></div>` : `<div class="big">${d===0?'Exact hit':`Best was ${t.best}, off by ${d}`}</div>${d===0?'':`<div class="sc">One way: ${TGT.solution}</div>`}<div class="kv"><span>${d===0?'Perfect':d<=5?'Within 5':d<=10?'Within 10':'Keep practising'}</span><b>${t.score} pts</b></div><div class="row"><button class="btn primary" id="tgtshare">Copy result</button><button class="btn" data-go="">Back to games</button></div>`;
+  r.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>go(''))); const sb=$('#tgtshare'); if(sb) sb.addEventListener('click',()=>copyText(GAMES[1].share())); }
+
+// ========== HIGHER OR LOWER ==========
+const HL=(function(){ const rnd=rngFor('hilo'); const seq=shuffle(COUNTRIES,rnd).slice(0,11); return {seq}; })();
+let hlLock=false;
+function renderHilo(){
+  const h=S.hilo; const dots=$('#hldots'); dots.innerHTML=''; for(let i=0;i<10;i++){ const d=document.createElement('i'); if(i<h.answers.length) d.className=h.answers[i]?'ok':'no'; else if(i===h.round&&!h.done) d.className='cur'; dots.appendChild(d); }
+  const vs=$('#vs'); if(h.done){ vs.innerHTML=''; $('#hlmsg').textContent=''; return showHlResult(); }
+  const a=HL.seq[h.round], b=HL.seq[h.round+1];
+  vs.innerHTML=`<div class="cc left"><div class="flag">${flag(a[1])}</div><div class="cn">${a[0]}</div><div class="pop">${fmtPop(a[3])}<small>people</small></div></div><div class="mid">VS</div><div class="cc right" id="hlright"><div class="flag">${flag(b[1])}</div><div class="cn">${b[0]}</div><div class="pop" id="hlpop">?<small>people</small></div><div class="hl"><button class="btn primary" data-hl="higher">▲ Higher</button><button class="btn primary" data-hl="lower">▼ Lower</button></div></div>`;
+  vs.querySelectorAll('[data-hl]').forEach(btn=>btn.addEventListener('click',()=>hlAnswer(btn.dataset.hl)));
+  $('#hlmsg').textContent=`Round ${h.round+1} of 10`; $('#hlmsg').className='msg'; }
+function hlAnswer(choice){ if(hlLock||S.hilo.done) return; hlLock=true; const h=S.hilo; const a=HL.seq[h.round], b=HL.seq[h.round+1]; const ok = choice==='higher' ? b[3]>a[3] : b[3]<a[3]; h.answers.push(ok); const right=$('#hlright'); right.classList.add(ok?'ok':'no'); right.querySelector('.hl').remove(); $('#hlpop').innerHTML=`${fmtPop(b[3])}<small>people</small>`; const m=$('#hlmsg'); m.textContent= ok?'Correct':'Wrong'; m.className='msg '+(ok?'good':'bad');
+  setTimeout(()=>{ h.round++; if(h.round>=10){ const c=h.answers.filter(Boolean).length; finish('hilo',{score:c*10,solved:c>=7}); } save(); hlLock=false; renderHilo(); },1100); }
+function showHlResult(){ const r=$('#hlresult'); r.hidden=false; const c=S.hilo.answers.filter(Boolean).length; r.innerHTML=`<div class="big">${c}/10 correct</div><div class="sc">${'█'.repeat(c)}${'░'.repeat(10-c)}</div><div class="kv"><span>${c>=7?'Solved':'Seven needed to count as solved'}</span><b>${S.hilo.score} pts</b></div><div class="row"><button class="btn primary" id="hlshare">Copy result</button><button class="btn" data-go="">Back to games</button></div>`;
+  r.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>go(''))); $('#hlshare').addEventListener('click',()=>copyText(GAMES[2].share())); }
+
+// ========== CAPITAL ==========
+const CAP=(function(){ const rnd=rngFor('capital'); const pool=COUNTRIES.filter(c=>c[6]); return pool[Math.floor(rnd()*pool.length)]; })();
+(function(){ const dl=$('#caplist'); [...new Set(COUNTRIES.filter(c=>c[6]).map(c=>c[2]))].sort().forEach(c=>{ const o=document.createElement('option'); o.value=c; dl.appendChild(o); }); })();
+function capAccepts(g){ const n=norm(g); return n.length>0 && (n===norm(CAP[2]) || (CAP[5]||[]).some(a=>norm(a)===n)); }
+function renderCapital(){
+  const c=S.capital; const n=c.guesses.length; const hints=['', `Hint: it's in ${CAP[4]}.`, `Hint: it starts with “${CAP[2][0]}” and has ${CAP[2].replace(/[^A-Za-z]/g,'').length} letters.`];
+  $('#country').innerHTML=`<div class="flag">${flag(CAP[1])}</div><h3>${CAP[0]}</h3><div class="hint">${c.done?'':hints[Math.min(n,2)]}</div>`;
+  const tr=$('#captries'); tr.innerHTML=''; for(let i=0;i<3;i++){ const d=document.createElement('i'); const g=c.guesses[i]; if(g) d.className=g.ok?'ok':'no'; tr.appendChild(d); }
+  $('#capguesses').textContent = c.guesses.filter(g=>!g.ok).map(g=>g.t).join(' · ');
+  $('#capform').hidden=c.done; if(c.done) showCapResult(); }
+$('#capform').addEventListener('submit',e=>{ e.preventDefault(); if(S.capital.done) return; const inp=$('#capinput'); const t=inp.value.trim(); if(!t) return; const ok=capAccepts(t); S.capital.guesses.push({t,ok}); inp.value=''; if(ok){ const n=S.capital.guesses.length; finish('capital',{score:[100,70,40][n-1],solved:true}); } else if(S.capital.guesses.length>=3){ finish('capital',{score:0,solved:false}); } else { save(); toast('Not it. Try again.'); } renderCapital(); });
+function showCapResult(){ const r=$('#capresult'); r.hidden=false; const c=S.capital; r.innerHTML=`<div class="big">${c.solved?`${CAP[2]} — correct on try ${c.guesses.length}`:`It's ${CAP[2]}`}</div><div class="kv"><span>${c.solved?'Solved':'Missed'}</span><b>${c.score} pts</b></div><div class="row"><button class="btn primary" id="capshare">Copy result</button><button class="btn" data-go="">Back to games</button></div>`;
+  r.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>go(''))); $('#capshare').addEventListener('click',()=>copyText(GAMES[3].share())); }
+
+// ---------- boot ----------
+renderLadder(); renderTarget(); renderHilo(); renderCapital(); route();
+})();
+</script>
